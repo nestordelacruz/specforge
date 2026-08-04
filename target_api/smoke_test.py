@@ -4,8 +4,9 @@ import os
 
 os.environ["DATABASE_URL"] = "sqlite:///./smoke.db"
 
-from fastapi.testclient import TestClient  # noqa: E402
-from app.main import app  # noqa: E402
+from fastapi.testclient import TestClient
+
+from app.main import app
 
 client = TestClient(app)
 results = []

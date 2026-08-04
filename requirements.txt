@@ -1,3 +1,5 @@
+# Deps for the specforge tool itself (generator/renderer/executor/analysis, Phase 2+).
+# target_api has its own pinned requirements.txt and its own CI job.
 fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
 pydantic>=2.9.0

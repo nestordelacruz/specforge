@@ -1,8 +1,7 @@
 from fastapi import FastAPI
 
-from .database import Base, engine
-from .routers import auth, readings
 from .database import Base, engine, wait_for_db
+from .routers import auth, readings
 
 wait_for_db()
 # For a demo target service we create tables on startup. In a real system this

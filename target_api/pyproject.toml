@@ -1,0 +1,11 @@
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+# B008: FastAPI's Depends()-in-default-argument is the documented idiom, not a bug.
+ignore = ["B008"]
+
+[tool.pytest.ini_options]
+# smoke_test.py is a manual script (see README), not a pytest module — keep
+# collection scoped to the real suite.
+testpaths = ["tests"]

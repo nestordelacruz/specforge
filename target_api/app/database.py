@@ -1,10 +1,11 @@
-from sqlalchemy import create_engine
+import time
+
+from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from .config import settings
-import time
-from sqlalchemy import text
-from sqlalchemy.exc import OperationalError
+
 
 def wait_for_db(max_attempts: int = 15, delay: float = 2.0) -> None:
     """Block until Postgres accepts connections, so startup doesn't race the DB."""

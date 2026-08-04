@@ -17,6 +17,10 @@ jobs:
       matrix:
         python-version: ["3.11", "3.12"]
 
+    defaults:
+      run:
+        working-directory: target_api
+
     steps:
       - uses: actions/checkout@v4
 
@@ -25,6 +29,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
+          cache-dependency-path: target_api/requirements.txt
 
       - name: Install dependencies
         run: |
@@ -43,7 +48,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.python-version }}
-          path: coverage.xml
+          path: target_api/coverage.xml
           if-no-files-found: ignore
 
   # Phase 4 will add a job here that runs the generated suite N times
