@@ -9,3 +9,6 @@ ignore = ["B008"]
 # smoke_test.py is a manual script (see README), not a pytest module — keep
 # collection scoped to the real suite.
 testpaths = ["tests"]
+# Make the `app` package importable under bare `pytest` (no implicit cwd on
+# sys.path the way `python -m pytest` gives).
+pythonpath = ["."]
