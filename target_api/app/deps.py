@@ -34,11 +34,3 @@ def get_current_user(
     if user is None:
         raise _credentials_exc
     return user
-
-
-def require_admin(user: User = Depends(get_current_user)) -> User:
-    if user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required"
-        )
-    return user
