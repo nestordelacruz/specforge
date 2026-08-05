@@ -1,0 +1,13 @@
+[tool.ruff]
+line-length = 100
+# target_api is a separate module with its own ruff config and CI job.
+exclude = ["target_api"]
+
+[tool.pytest.ini_options]
+# Only the tool's own tests; target_api's suite runs from its own directory.
+testpaths = ["tests"]
+pythonpath = ["."]
+# Tests here are functions. Without this, pytest tries to collect the domain
+# models TestDefinition/TestSuite as test classes and warns on every run —
+# noise that would hide a genuine collection failure.
+python_classes = []
