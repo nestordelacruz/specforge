@@ -4,10 +4,16 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from .generator import GenerationError, generate_suite, load_spec
 
 
 def main(argv: list[str] | None = None) -> int:
+    # .env.example documents ANTHROPIC_API_KEY and CLAUDE_MODEL living in .env,
+    # so the CLI has to actually read it. Real environment variables win.
+    load_dotenv(override=False)
+
     parser = argparse.ArgumentParser(
         prog="specforge",
         description="Generate schema-validated API test definitions from an OpenAPI spec.",

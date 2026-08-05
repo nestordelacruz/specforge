@@ -34,6 +34,12 @@ Design guidance:
 - Use the auth field to express identity: `user` owns the resources it creates,
   `other_user` is a different non-admin account, `admin` has elevated access,
   and `none` is unauthenticated. The executor supplies real credentials.
+
+Request data — body, path_params, query_params, and expected_body_contains —
+is passed as a JSON object encoded in a string. Write `{"value": 120, "unit":
+"mg/dL"}`, not an object literal. A test that needs a body and omits it is
+worse than no test: it will pass or fail for the wrong reason. Populate every
+field the request actually requires, and give path parameters concrete values.
 """
 
 

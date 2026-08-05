@@ -8,6 +8,17 @@ from ..schemas import ReadingCreate, ReadingOut, ReadingUpdate
 
 router = APIRouter(prefix="/readings", tags=["readings"])
 
+# Documented so the permission model is visible in openapi.json. FastAPI only
+# infers 2xx and 422; without these, a spec consumer cannot tell that this API
+# distinguishes "not yours" (403) from "doesn't exist" (404) — the distinction
+# the authorization tests exist to check.
+_UNAUTH = {401: {"description": "Missing or invalid credentials."}}
+_OWNED = {
+    **_UNAUTH,
+    403: {"description": "The reading belongs to another user and the caller is not an admin."},
+    404: {"description": "No reading with this id exists."},
+}
+
 
 def _get_owned_or_404(reading_id: int, user: User, db: Session) -> Reading:
     reading = db.get(Reading, reading_id)
@@ -19,7 +30,13 @@ def _get_owned_or_404(reading_id: int, user: User, db: Session) -> Reading:
     return reading
 
 
-@router.post("", response_model=ReadingOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=ReadingOut,
+    status_code=status.HTTP_201_CREATED,
+    responses=_UNAUTH,
+    summary="Create a reading owned by the caller.",
+)
 def create_reading(
     payload: ReadingCreate,
     db: Session = Depends(get_db),
@@ -33,7 +50,12 @@ def create_reading(
     return reading
 
 
-@router.get("", response_model=list[ReadingOut])
+@router.get(
+    "",
+    response_model=list[ReadingOut],
+    responses=_UNAUTH,
+    summary="List the caller's readings. Admins see readings from all users.",
+)
 def list_readings(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
@@ -48,7 +70,12 @@ def list_readings(
     )
 
 
-@router.get("/{reading_id}", response_model=ReadingOut)
+@router.get(
+    "/{reading_id}",
+    response_model=ReadingOut,
+    responses=_OWNED,
+    summary="Fetch one reading. Only the owner or an admin may read it.",
+)
 def get_reading(
     reading_id: int,
     db: Session = Depends(get_db),
@@ -57,7 +84,12 @@ def get_reading(
     return _get_owned_or_404(reading_id, user, db)
 
 
-@router.put("/{reading_id}", response_model=ReadingOut)
+@router.put(
+    "/{reading_id}",
+    response_model=ReadingOut,
+    responses=_OWNED,
+    summary="Replace one reading. Only the owner or an admin may update it.",
+)
 def update_reading(
     reading_id: int,
     payload: ReadingUpdate,
@@ -72,7 +104,12 @@ def update_reading(
     return reading
 
 
-@router.delete("/{reading_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{reading_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=_OWNED,
+    summary="Delete one reading. Only the owner or an admin may delete it.",
+)
 def delete_reading(
     reading_id: int,
     db: Session = Depends(get_db),

@@ -43,7 +43,16 @@ _BOUNDS = {
 
 
 class ReadingBase(BaseModel):
-    value: float
+    # The cross-field rule below can't be expressed in JSON Schema, so it is
+    # documented here instead. Without this, the constraint is invisible in
+    # openapi.json — `value` serializes as a bare number — and anything working
+    # from the spec alone (including SpecForge's generator) cannot know the
+    # bounds exist, let alone probe them.
+    value: float = Field(
+        description="Measured value. The accepted range depends on `unit`: "
+        "mg/dL accepts 20–600 inclusive, mmol/L accepts 1.1–33.3 inclusive. "
+        "A value outside the range for its unit is rejected with 422."
+    )
     unit: Unit
     trend: Trend
     note: str | None = Field(default=None, max_length=280)

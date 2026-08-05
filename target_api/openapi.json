@@ -11,7 +11,7 @@
         "tags": [
           "auth"
         ],
-        "summary": "Register",
+        "summary": "Register a new user. New accounts always get the 'user' role.",
         "operationId": "register_auth_register_post",
         "requestBody": {
           "content": {
@@ -34,6 +34,9 @@
               }
             }
           },
+          "409": {
+            "description": "That email is already registered."
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -52,7 +55,7 @@
         "tags": [
           "auth"
         ],
-        "summary": "Login",
+        "summary": "Exchange email and password for a bearer token.",
         "operationId": "login_auth_token_post",
         "requestBody": {
           "content": {
@@ -75,6 +78,9 @@
               }
             }
           },
+          "401": {
+            "description": "Incorrect email or password."
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -93,7 +99,7 @@
         "tags": [
           "auth"
         ],
-        "summary": "Me",
+        "summary": "Return the authenticated caller's own user record.",
         "operationId": "me_auth_me_get",
         "responses": {
           "200": {
@@ -105,6 +111,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing or invalid credentials."
           }
         },
         "security": [
@@ -119,7 +128,7 @@
         "tags": [
           "readings"
         ],
-        "summary": "Create Reading",
+        "summary": "Create a reading owned by the caller.",
         "operationId": "create_reading_readings_post",
         "security": [
           {
@@ -147,6 +156,9 @@
               }
             }
           },
+          "401": {
+            "description": "Missing or invalid credentials."
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -163,7 +175,7 @@
         "tags": [
           "readings"
         ],
-        "summary": "List Readings",
+        "summary": "List the caller's readings. Admins see readings from all users.",
         "operationId": "list_readings_readings_get",
         "security": [
           {
@@ -210,6 +222,9 @@
               }
             }
           },
+          "401": {
+            "description": "Missing or invalid credentials."
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -228,7 +243,7 @@
         "tags": [
           "readings"
         ],
-        "summary": "Get Reading",
+        "summary": "Fetch one reading. Only the owner or an admin may read it.",
         "operationId": "get_reading_readings__reading_id__get",
         "security": [
           {
@@ -257,6 +272,15 @@
               }
             }
           },
+          "401": {
+            "description": "Missing or invalid credentials."
+          },
+          "403": {
+            "description": "The reading belongs to another user and the caller is not an admin."
+          },
+          "404": {
+            "description": "No reading with this id exists."
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -273,7 +297,7 @@
         "tags": [
           "readings"
         ],
-        "summary": "Update Reading",
+        "summary": "Replace one reading. Only the owner or an admin may update it.",
         "operationId": "update_reading_readings__reading_id__put",
         "security": [
           {
@@ -312,6 +336,15 @@
               }
             }
           },
+          "401": {
+            "description": "Missing or invalid credentials."
+          },
+          "403": {
+            "description": "The reading belongs to another user and the caller is not an admin."
+          },
+          "404": {
+            "description": "No reading with this id exists."
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -328,7 +361,7 @@
         "tags": [
           "readings"
         ],
-        "summary": "Delete Reading",
+        "summary": "Delete one reading. Only the owner or an admin may delete it.",
         "operationId": "delete_reading_readings__reading_id__delete",
         "security": [
           {
@@ -349,6 +382,15 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or invalid credentials."
+          },
+          "403": {
+            "description": "The reading belongs to another user and the caller is not an admin."
+          },
+          "404": {
+            "description": "No reading with this id exists."
           },
           "422": {
             "description": "Validation Error",
@@ -459,7 +501,8 @@
         "properties": {
           "value": {
             "type": "number",
-            "title": "Value"
+            "title": "Value",
+            "description": "Measured value. The accepted range depends on `unit`: mg/dL accepts 20\u2013600 inclusive, mmol/L accepts 1.1\u201333.3 inclusive. A value outside the range for its unit is rejected with 422."
           },
           "unit": {
             "$ref": "#/components/schemas/Unit"
@@ -561,7 +604,8 @@
         "properties": {
           "value": {
             "type": "number",
-            "title": "Value"
+            "title": "Value",
+            "description": "Measured value. The accepted range depends on `unit`: mg/dL accepts 20\u2013600 inclusive, mmol/L accepts 1.1\u201333.3 inclusive. A value outside the range for its unit is rejected with 422."
           },
           "unit": {
             "$ref": "#/components/schemas/Unit"

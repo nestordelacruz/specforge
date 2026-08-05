@@ -20,7 +20,7 @@ VALID_TEST = TestDefinition(
     method="POST",
     path="/readings",
     auth=Auth.user,
-    body={"value": 120, "unit": "mg/dL", "trend": "rising"},
+    body='{"value": 120, "unit": "mg/dL", "trend": "rising"}',
     expected_status=201,
 )
 
@@ -65,6 +65,40 @@ def test_spec_ref_is_required():
             auth=Auth.user,
             expected_status=200,
         )
+
+
+def test_json_payloads_parse_to_dicts():
+    """The wire format is a JSON string; downstream consumers get dicts."""
+    assert VALID_TEST.body_dict() == {"value": 120, "unit": "mg/dL", "trend": "rising"}
+    assert VALID_TEST.path_params_dict() is None
+
+
+def test_malformed_json_rejected():
+    """Second half of the boundary: the string must actually be usable."""
+    with pytest.raises(ValueError, match="not valid JSON"):
+        VALID_TEST.model_copy(update={"body": "{not json"}).model_validate(
+            VALID_TEST.model_dump() | {"body": "{not json"}
+        )
+
+
+def test_non_object_json_rejected():
+    with pytest.raises(ValueError, match="must be a JSON object"):
+        TestDefinition.model_validate(VALID_TEST.model_dump() | {"body": "[1, 2, 3]"})
+
+
+def test_resolved_path_substitutes_params():
+    """Guards the empty-payload bug: a templated path must come out concrete."""
+    t = TestDefinition.model_validate(
+        VALID_TEST.model_dump()
+        | {
+            "path": "/readings/{reading_id}",
+            "path_params": '{"reading_id": "7"}',
+            "method": "GET",
+            "body": None,
+        }
+    )
+    assert t.resolved_path() == "/readings/7"
+    assert "{" not in t.resolved_path()
 
 
 def test_unknown_fields_rejected():

@@ -11,7 +11,13 @@ from ..security import create_access_token, hash_password, verify_password
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=UserOut,
+    status_code=status.HTTP_201_CREATED,
+    responses={409: {"description": "That email is already registered."}},
+    summary="Register a new user. New accounts always get the 'user' role.",
+)
 def register(payload: UserCreate, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == payload.email).first():
         raise HTTPException(status_code=409, detail="Email already registered")
@@ -22,7 +28,12 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
     return user
 
 
-@router.post("/token", response_model=Token)
+@router.post(
+    "/token",
+    response_model=Token,
+    responses={401: {"description": "Incorrect email or password."}},
+    summary="Exchange email and password for a bearer token.",
+)
 def login(
     form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
 ):
@@ -36,6 +47,11 @@ def login(
     return Token(access_token=create_access_token(user.email))
 
 
-@router.get("/me", response_model=UserOut)
+@router.get(
+    "/me",
+    response_model=UserOut,
+    responses={401: {"description": "Missing or invalid credentials."}},
+    summary="Return the authenticated caller's own user record.",
+)
 def me(user: User = Depends(get_current_user)):
     return user
