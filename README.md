@@ -29,7 +29,7 @@ SpecForge is built around those three problems rather than around the generation
 OpenAPI spec
      │
      ▼
-┌─────────────────┐   temperature 0 + strict JSON schema validation
+┌─────────────────┐   strict JSON schema (structured outputs)
 │  Generator      │   ──────────────────────────────────────────────
 │  (Claude API)   │   emits structured test definitions, not raw code
 └────────┬────────┘
@@ -88,7 +88,7 @@ pip install -r requirements.txt
  
 cp .env.example .env             # then add your Anthropic API key
  
-uvicorn app.main:app --reload    # target service at http://127.0.0.1:8000
+python scripts/run_target.py     # target service at http://127.0.0.1:8000
 ```
  
 Interactive API docs: `http://127.0.0.1:8000/docs`
@@ -117,10 +117,13 @@ specforge/
 │   ├── schema.py         # the validated LLM boundary (TestDefinition/TestSuite)
 │   ├── prompts.py        # generation prompt, isolated for review
 │   ├── generator.py      # OpenAPI spec ──> structured test definitions
-│   ├── cli.py            # python -m specforge.cli <spec> -o suite.json
-│   ├── renderer.py       # (Phase 3) definitions ──> pytest files
-│   ├── executor.py       # (Phase 3) runs suites, collects results
+│   ├── cli.py            # generate | render | run
+│   ├── renderer.py       # definitions ──> readable pytest (pure, deterministic)
+│   ├── executor.py       # runs the suite over HTTP, collects per-test results
 │   └── analysis.py       # (Phase 4/5) flake detection + failure clustering
+├── generated/            # rendered pytest — committed, so regeneration diffs
+├── scripts/run_target.py # resets + seeds the DB and serves the target
+├── suite.json            # the generated definitions — committed for the same reason
 ├── tests/                # the tool's own tests (Claude call mocked)
 ├── .github/workflows/
 └── requirements.txt      # tool deps only
@@ -134,17 +137,22 @@ source. They have their own dependency sets and their own CI jobs.
 ## Usage
 
 ```bash
-python -m specforge.cli target_api/openapi.json -o suite.json
+python -m specforge.cli generate target_api/openapi.json -o suite.json
+python -m specforge.cli render suite.json -o generated/
+python scripts/run_target.py &
+python -m specforge.cli run generated/ --base-url http://127.0.0.1:8000
 ```
 
-Requires `ANTHROPIC_API_KEY`. Prints a per-case-type breakdown and writes the
-validated suite to `suite.json`.
+Only `generate` needs `ANTHROPIC_API_KEY`; `render` and `run` are offline and
+deterministic. `suite.json` and `generated/` are committed, so regenerating
+produces a git diff — which is the cheapest possible read on whether the model's
+output is stable between runs.
  
 ## Roadmap
  
 - [x] **Phase 1** — Target FastAPI service: auth, CRUD resource, complex validation, permission enforcement
 - [x] **Phase 2** — Generator: OpenAPI spec to schema-validated test definitions via Claude
-- [ ] **Phase 3** — Renderer and executor: definitions to runnable pytest, executed against the target
+- [x] **Phase 3** — Renderer and executor: definitions to runnable pytest, executed against the target
 - [ ] **Phase 4** — Flake detection across N CI runs
 - [ ] **Phase 5** — LLM failure clustering and root-cause summaries
 - [ ] **Phase 6** — Requirements traceability matrix

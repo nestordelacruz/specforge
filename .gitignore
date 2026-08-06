@@ -2,4 +2,6 @@ __pycache__/
 *.pyc
 *.db
 .env
-suite.json
+
+# The target's run database (rebuilt by scripts/run_target.py).
+specforge_run.db

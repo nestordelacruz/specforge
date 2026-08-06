@@ -10,7 +10,7 @@ from types import SimpleNamespace
 import pytest
 
 from specforge.generator import GenerationError, generate_suite
-from specforge.schema import Auth, CaseType, TestDefinition, TestSuite
+from specforge.schema import Auth, CaseType, SetupStep, TestDefinition, TestSuite
 
 VALID_TEST = TestDefinition(
     id="create_reading_valid",
@@ -25,10 +25,26 @@ VALID_TEST = TestDefinition(
 )
 
 
+class _FakeStream:
+    """Stands in for the SDK's streaming context manager."""
+
+    def __init__(self, response):
+        self._response = response
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        return False
+
+    def get_final_message(self):
+        return self._response
+
+
 def _client(*, parsed=None, stop_reason="end_turn"):
     """A stand-in Anthropic client returning one canned response."""
     response = SimpleNamespace(parsed_output=parsed, stop_reason=stop_reason)
-    return SimpleNamespace(messages=SimpleNamespace(parse=lambda **kwargs: response))
+    return SimpleNamespace(messages=SimpleNamespace(stream=lambda **kwargs: _FakeStream(response)))
 
 
 def test_returns_validated_suite():
@@ -99,6 +115,40 @@ def test_resolved_path_substitutes_params():
     )
     assert t.resolved_path() == "/readings/7"
     assert "{" not in t.resolved_path()
+
+
+def test_setup_step_validates_its_body():
+    """Setup bodies go through the same JSON-object gate as test bodies."""
+    with pytest.raises(ValueError, match="not valid JSON"):
+        SetupStep(method="POST", path="/readings", auth=Auth.user, body="{nope")
+
+
+def test_setup_defaults_to_empty():
+    """Most tests need no setup; the field shouldn't be required."""
+    assert VALID_TEST.setup == []
+    assert VALID_TEST.bound_params() == set()
+
+
+def test_bound_params_reports_setup_bindings():
+    t = TestDefinition.model_validate(
+        VALID_TEST.model_dump()
+        | {
+            "path": "/readings/{reading_id}",
+            "setup": [
+                {
+                    "method": "POST",
+                    "path": "/readings",
+                    "auth": "user",
+                    "body": '{"value": 120, "unit": "mg/dL", "trend": "steady"}',
+                    "capture": "id",
+                    "bind_to": "reading_id",
+                }
+            ],
+        }
+    )
+    assert t.bound_params() == {"reading_id"}
+    # A bound parameter stays templated — its value isn't known until run time.
+    assert t.resolved_path() == "/readings/{reading_id}"
 
 
 def test_unknown_fields_rejected():

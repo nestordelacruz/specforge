@@ -19,9 +19,11 @@ from .schema import TestSuite
 # a generator run repeatedly in CI. Override with CLAUDE_MODEL.
 DEFAULT_MODEL = "claude-sonnet-5"
 
-# Generous ceiling: a full suite for a small spec is well under this, but
-# truncation mid-JSON is a failure mode worth spending headroom to avoid.
-MAX_TOKENS = 16000
+# A suite grows with the spec, and every test carries setup steps and payloads,
+# so this needs real headroom — 16000 truncated a 50-test suite mid-JSON. The
+# request streams because the SDK refuses non-streaming calls this large: they
+# risk exceeding the HTTP timeout before the response completes.
+MAX_TOKENS = 64000
 
 
 class GenerationError(RuntimeError):
@@ -42,13 +44,14 @@ def generate_suite(
     client = client or anthropic.Anthropic()
     model = model or os.environ.get("CLAUDE_MODEL", DEFAULT_MODEL)
 
-    response = client.messages.parse(
+    with client.messages.stream(
         model=model,
         max_tokens=MAX_TOKENS,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": build_user_prompt(json.dumps(spec, indent=2))}],
         output_format=TestSuite,
-    )
+    ) as stream:
+        response = stream.get_final_message()
 
     # Structured outputs guarantee the shape, not that a response arrived at
     # all. These are the two ways it can still come back unusable.

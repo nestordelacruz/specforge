@@ -16,7 +16,12 @@ Cover four kinds of case:
 - positive: valid requests that should succeed
 - negative: malformed or invalid requests that should be rejected
 - boundary: values at the edges of documented constraints — both the last
-  accepted value and the first rejected one on each side
+  accepted value and the first rejected one on each side. Documented limits are
+  inclusive unless the spec says otherwise: with maxLength 128, a 128-character
+  value is *accepted* and 129 is rejected. Check the expected status of every
+  boundary case against the limit you are probing, and make sure the value you
+  write is actually on the side you claim — a 334-character value is not a test
+  of a 280-character cap being accepted.
 - authorization: who may access what, including unauthenticated access and
   one user reaching for another user's resources
 
@@ -39,7 +44,25 @@ Request data — body, path_params, query_params, and expected_body_contains —
 is passed as a JSON object encoded in a string. Write `{"value": 120, "unit":
 "mg/dL"}`, not an object literal. A test that needs a body and omits it is
 worse than no test: it will pass or fail for the wrong reason. Populate every
-field the request actually requires, and give path parameters concrete values.
+field the request actually requires.
+
+Tests must not depend on data already being there. The database starts empty
+and tests run in an unpredictable order, so every test creates what it needs
+using the `setup` field:
+
+- To act on a resource by id, add a setup step that creates it, set `capture`
+  to the id field of the response (usually `"id"`), and set `bind_to` to the
+  path parameter it fills. Do not put a made-up id in path_params and hope it
+  exists.
+- Set `auth` on each setup step to whichever identity should *own* the created
+  resource — often not the identity under test. To check that one user cannot
+  read another's data, create the resource as `user` and make the request as
+  `other_user`.
+- Use a literal path parameter only when the value is deliberately not a real
+  resource: a not-found case, or a malformed id.
+- Never assert that a collection is empty or has an exact length. Other tests
+  add rows the whole time, so those assertions fail for reasons unrelated to
+  the behavior being tested. Assert on the resources you created instead.
 """
 
 

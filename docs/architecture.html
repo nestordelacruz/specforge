@@ -1,0 +1,1285 @@
+<title>SpecForge — Architecture &amp; Design Rationale</title>
+
+<style>
+  :root {
+    --paper:      #F6F8F9;
+    --paper-2:    #EDF2F4;
+    --paper-3:    #E3EBEE;
+    --ink:        #12222A;
+    --ink-2:      #4A6069;
+    --ink-3:      #6E858D;
+    --rule:       #D2DEE2;
+    --accent:     #0B6E77;
+    --accent-2:   #0E8A95;
+    --accent-wash:#E2F0F1;
+    --amber:      #8F5A00;
+    --amber-wash: #F7EDDC;
+    --crimson:    #973025;
+    --crimson-wash:#F8E7E4;
+    --green:      #1F6448;
+    --green-wash: #E1F0E8;
+
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sans:  ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono:  ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+
+    --measure: 68ch;
+    --gutter: clamp(1.15rem, 4vw, 2.5rem);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper:      #0C1418;
+      --paper-2:    #131F25;
+      --paper-3:    #1A2A32;
+      --ink:        #E5EEF1;
+      --ink-2:      #9AB0B8;
+      --ink-3:      #7A9199;
+      --rule:       #22363E;
+      --accent:     #38B9C4;
+      --accent-2:   #5AD0D9;
+      --accent-wash:#102E33;
+      --amber:      #D9A24E;
+      --amber-wash: #2C2314;
+      --crimson:    #E67B69;
+      --crimson-wash:#2E1815;
+      --green:      #55BE91;
+      --green-wash: #12291F;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:      #0C1418;
+    --paper-2:    #131F25;
+    --paper-3:    #1A2A32;
+    --ink:        #E5EEF1;
+    --ink-2:      #9AB0B8;
+    --ink-3:      #7A9199;
+    --rule:       #22363E;
+    --accent:     #38B9C4;
+    --accent-2:   #5AD0D9;
+    --accent-wash:#102E33;
+    --amber:      #D9A24E;
+    --amber-wash: #2C2314;
+    --crimson:    #E67B69;
+    --crimson-wash:#2E1815;
+    --green:      #55BE91;
+    --green-wash: #12291F;
+  }
+
+  :root[data-theme="light"] {
+    --paper:      #F6F8F9;
+    --paper-2:    #EDF2F4;
+    --paper-3:    #E3EBEE;
+    --ink:        #12222A;
+    --ink-2:      #4A6069;
+    --ink-3:      #6E858D;
+    --rule:       #D2DEE2;
+    --accent:     #0B6E77;
+    --accent-2:   #0E8A95;
+    --accent-wash:#E2F0F1;
+    --amber:      #8F5A00;
+    --amber-wash: #F7EDDC;
+    --crimson:    #973025;
+    --crimson-wash:#F8E7E4;
+    --green:      #1F6448;
+    --green-wash: #E1F0E8;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+  }
+
+  .shell {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 var(--gutter) 6rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  @media (min-width: 1100px) {
+    .shell {
+      grid-template-columns: 15rem minmax(0, 1fr);
+      column-gap: 3.5rem;
+      align-items: start;
+    }
+    .rail { grid-column: 1; }
+    .flow { grid-column: 2; }
+  }
+
+  /* ---------- masthead ---------- */
+  .masthead {
+    grid-column: 1 / -1;
+    border-bottom: 1px solid var(--rule);
+    padding: clamp(2.5rem, 7vw, 4.5rem) 0 2rem;
+    margin-bottom: 2.75rem;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: .72rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 1.1rem;
+  }
+  .masthead h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(2.3rem, 6vw, 3.6rem);
+    line-height: 1.06;
+    letter-spacing: -.015em;
+    margin: 0 0 1rem;
+    text-wrap: balance;
+  }
+  .standfirst {
+    font-family: var(--serif);
+    font-size: clamp(1.08rem, 2.2vw, 1.3rem);
+    line-height: 1.5;
+    color: var(--ink-2);
+    max-width: 56ch;
+    margin: 0 0 1.75rem;
+  }
+  .meta-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem 1.75rem;
+    font-family: var(--mono);
+    font-size: .76rem;
+    color: var(--ink-3);
+  }
+  .meta-strip b { color: var(--ink-2); font-weight: 500; }
+
+  /* ---------- rail ---------- */
+  .rail { display: none; }
+  @media (min-width: 1100px) {
+    .rail {
+      display: block;
+      position: sticky;
+      top: 2rem;
+      font-size: .82rem;
+      border-left: 1px solid var(--rule);
+      padding-left: 1.1rem;
+    }
+    .rail h2 {
+      font-family: var(--mono);
+      font-size: .68rem;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+      margin: 0 0 .9rem;
+      font-weight: 500;
+    }
+    .rail ol { list-style: none; margin: 0; padding: 0; display: grid; gap: .55rem; }
+    .rail a {
+      color: var(--ink-2);
+      text-decoration: none;
+      display: block;
+      line-height: 1.35;
+      border-left: 2px solid transparent;
+      margin-left: -1.15rem;
+      padding-left: 1.05rem;
+    }
+    .rail a:hover { color: var(--accent); border-left-color: var(--accent); }
+    .rail a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  }
+
+  /* ---------- flow ---------- */
+  .flow > * { max-width: var(--measure); }
+  .flow > .bleed { max-width: none; }
+
+  section { margin-bottom: 3.5rem; scroll-margin-top: 1.5rem; }
+
+  h2 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(1.5rem, 3.4vw, 2rem);
+    line-height: 1.16;
+    letter-spacing: -.01em;
+    margin: 0 0 .5rem;
+    text-wrap: balance;
+  }
+  .sec-num {
+    font-family: var(--mono);
+    font-size: .7rem;
+    letter-spacing: .13em;
+    color: var(--accent);
+    display: block;
+    margin-bottom: .55rem;
+    text-transform: uppercase;
+  }
+  h3 {
+    font-family: var(--sans);
+    font-weight: 650;
+    font-size: 1.02rem;
+    letter-spacing: .005em;
+    margin: 2rem 0 .55rem;
+    color: var(--ink);
+  }
+  p { margin: 0 0 1.05rem; }
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+  strong { font-weight: 650; }
+  code {
+    font-family: var(--mono);
+    font-size: .855em;
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: .08em .34em;
+    white-space: nowrap;
+  }
+  ul, ol { margin: 0 0 1.05rem; padding-left: 1.25rem; }
+  li { margin-bottom: .45rem; }
+  li::marker { color: var(--ink-3); }
+
+  /* ---------- lede ---------- */
+  .lede {
+    font-family: var(--serif);
+    font-size: 1.12rem;
+    line-height: 1.55;
+    color: var(--ink-2);
+    border-left: 2px solid var(--accent);
+    padding-left: 1.1rem;
+    margin: 0 0 1.75rem;
+  }
+
+  /* ---------- callout ---------- */
+  .note {
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 1.1rem 1.25rem;
+    margin: 1.5rem 0;
+    font-size: .95rem;
+  }
+  .note > :last-child { margin-bottom: 0; }
+  .note .tag {
+    font-family: var(--mono);
+    font-size: .68rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: .5rem;
+    color: var(--accent);
+  }
+  .note.warn { background: var(--amber-wash); border-color: color-mix(in srgb, var(--amber) 32%, transparent); }
+  .note.warn .tag { color: var(--amber); }
+  .note.key { background: var(--accent-wash); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+
+  /* ---------- tables ---------- */
+  .scroller { overflow-x: auto; margin: 1.4rem 0; border: 1px solid var(--rule); border-radius: 4px; background: var(--paper-2); }
+  table { border-collapse: collapse; width: 100%; font-size: .89rem; min-width: 34rem; }
+  caption {
+    caption-side: bottom;
+    text-align: left;
+    font-size: .78rem;
+    color: var(--ink-3);
+    padding: .7rem .95rem 0;
+    font-family: var(--mono);
+  }
+  th, td { text-align: left; padding: .62rem .95rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  thead th {
+    font-family: var(--mono);
+    font-size: .7rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+    background: var(--paper-3);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ---------- decision cards ---------- */
+  .decisions { display: grid; gap: 1rem; margin: 1.5rem 0; }
+  @media (min-width: 780px) { .decisions { grid-template-columns: 1fr 1fr; } }
+  .dec {
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: var(--paper-2);
+    padding: 1.05rem 1.15rem;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+  }
+  .dec h4 {
+    margin: 0;
+    font-size: .96rem;
+    font-weight: 650;
+    line-height: 1.3;
+  }
+  .dec p { margin: 0; font-size: .875rem; line-height: 1.55; color: var(--ink-2); }
+  .dec .cost {
+    font-size: .82rem;
+    color: var(--ink-3);
+    border-top: 1px dashed var(--rule);
+    padding-top: .5rem;
+    margin-top: auto;
+  }
+  .dec .cost b { color: var(--amber); font-weight: 600; }
+
+  /* ---------- status pills ---------- */
+  .pill {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: .68rem;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    padding: .13rem .5rem;
+    border-radius: 100px;
+    border: 1px solid;
+    white-space: nowrap;
+  }
+  .pill.done  { color: var(--green);   border-color: color-mix(in srgb, var(--green) 45%, transparent);   background: var(--green-wash); }
+  .pill.next  { color: var(--accent);  border-color: color-mix(in srgb, var(--accent) 45%, transparent);  background: var(--accent-wash); }
+  .pill.todo  { color: var(--ink-3);   border-color: var(--rule);                                          background: transparent; }
+  .pill.bad   { color: var(--crimson); border-color: color-mix(in srgb, var(--crimson) 45%, transparent); background: var(--crimson-wash); }
+
+  /* ---------- figures ---------- */
+  figure { margin: 1.9rem 0; }
+  figure svg { display: block; width: 100%; height: auto; }
+  figcaption {
+    font-family: var(--mono);
+    font-size: .76rem;
+    color: var(--ink-3);
+    margin-top: .8rem;
+    line-height: 1.5;
+    max-width: 62ch;
+  }
+  .fig-frame {
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: var(--paper-2);
+    padding: 1.4rem 1.2rem;
+    overflow-x: auto;
+  }
+  .fig-frame > svg { min-width: 30rem; }
+
+  /* ---------- before/after ---------- */
+  .ba { display: grid; gap: 1rem; margin: 1.5rem 0; }
+  @media (min-width: 700px) { .ba { grid-template-columns: 1fr 1fr; } }
+  .ba-col { border: 1px solid var(--rule); border-radius: 4px; padding: 1rem 1.15rem; }
+  .ba-col.before { background: var(--crimson-wash); border-color: color-mix(in srgb, var(--crimson) 26%, transparent); }
+  .ba-col.after  { background: var(--green-wash);   border-color: color-mix(in srgb, var(--green) 26%, transparent); }
+  .ba-col h4 {
+    margin: 0 0 .7rem;
+    font-family: var(--mono);
+    font-size: .7rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .ba-col.before h4 { color: var(--crimson); }
+  .ba-col.after h4  { color: var(--green); }
+  .ba-col dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: .35rem .8rem; font-size: .87rem; }
+  .ba-col dt { color: var(--ink-2); }
+  .ba-col dd { margin: 0; font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 600; }
+
+  /* ---------- q&a ---------- */
+  .qa { border-top: 1px solid var(--rule); padding-top: 1.15rem; margin-top: 1.15rem; }
+  .qa:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+  .qa .q {
+    font-family: var(--serif);
+    font-size: 1.1rem;
+    font-weight: 600;
+    line-height: 1.35;
+    margin: 0 0 .55rem;
+    color: var(--ink);
+  }
+  .qa p { font-size: .93rem; }
+
+  hr.div { border: 0; border-top: 1px solid var(--rule); margin: 3rem 0; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+</style>
+
+<div class="shell">
+
+  <header class="masthead">
+    <p class="eyebrow">Architecture &amp; Design Rationale</p>
+    <h1>SpecForge</h1>
+    <p class="standfirst">
+      Generates, executes, and diagnoses API test suites from an OpenAPI spec — using an LLM as the
+      test designer and a deterministic pipeline as the referee.
+    </p>
+    <div class="meta-strip">
+      <span><b>Phases complete</b> 2 of 7</span>
+      <span><b>Generator model</b> claude-sonnet-5</span>
+      <span><b>CI</b> 4 jobs green</span>
+      <span><b>Language</b> Python · FastAPI · pytest</span>
+    </div>
+  </header>
+
+  <nav class="rail" aria-label="Contents">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#thesis">The thesis</a></li>
+      <li><a href="#pipeline">The pipeline</a></li>
+      <li><a href="#repo">Repository architecture</a></li>
+      <li><a href="#boundary">The validated boundary</a></li>
+      <li><a href="#decisions">Decisions &amp; trade-offs</a></li>
+      <li><a href="#evidence">What happened when it ran</a></li>
+      <li><a href="#interactions">How the pieces interact</a></li>
+      <li><a href="#testing">Testing &amp; CI</a></li>
+      <li><a href="#debt">Known debt</a></li>
+      <li><a href="#explain">Explaining it out loud</a></li>
+    </ol>
+  </nav>
+
+  <main class="flow">
+
+    <!-- ============ 1 ============ -->
+    <section id="thesis">
+      <span class="sec-num">01 — Premise</span>
+      <h2>The thesis: the generation step is the easy half</h2>
+
+      <p class="lede">
+        Most “AI for testing” demos stop at <em>the model wrote some tests</em>. SpecForge is built
+        around the three problems that start immediately afterward.
+      </p>
+
+      <p>
+        The project exists to answer a question that a test-generating demo never has to face:
+        <strong>when a generated test fails, why did it fail?</strong> There are three candidate
+        explanations — the model wrote a bad test, the service has a real bug, or the environment
+        drifted — and if you can't tell them apart, the suite is worthless as a regression gate.
+      </p>
+
+      <p>Three concrete problems follow from that:</p>
+
+      <ul>
+        <li>
+          <strong>Non-determinism.</strong> An LLM asked the same question twice may answer
+          differently. A suite that changes between runs can't gate anything.
+        </li>
+        <li>
+          <strong>Flakiness attribution.</strong> When a test fails intermittently, teams burn
+          enormous time deciding whether to blame the test, the service, or the environment.
+        </li>
+        <li>
+          <strong>Traceability.</strong> In regulated environments “we have tests” is insufficient;
+          you must show which requirement each test covers. This comes directly from FDA-regulated
+          medical device work, where design controls demand demonstrable requirement-to-test linkage.
+        </li>
+      </ul>
+
+      <div class="note key">
+        <span class="tag">The organizing principle</span>
+        <p>
+          <strong>Confine non-determinism to exactly one boundary, and make everything around it
+          boringly reliable.</strong> The LLM emits structured data validated against a strict
+          schema; every downstream stage is deterministic templating and assertion. That single
+          decision is what makes failure attribution possible later — and nearly every other
+          decision in the project is downstream of it.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ 2 ============ -->
+    <section id="pipeline">
+      <span class="sec-num">02 — Structure</span>
+      <h2>The pipeline</h2>
+
+      <p>
+        Six stages. Only the first is stochastic. Everything after it is ordinary code that behaves
+        the same way every time it runs.
+      </p>
+
+      <figure class="bleed">
+        <div class="fig-frame">
+          <svg viewBox="0 0 980 260" role="img" aria-label="Six-stage pipeline from OpenAPI spec through generator, renderer, executor, flake detector, to diagnostics. Only the generator is non-deterministic. Phases 1 and 2 are complete.">
+            <defs>
+              <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,1 L9,5 L0,9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </marker>
+            </defs>
+
+            <!-- non-deterministic zone -->
+            <rect x="146" y="20" width="150" height="184" rx="5"
+                  fill="var(--accent-wash)" stroke="var(--accent)" stroke-dasharray="4 3" stroke-width="1"/>
+            <text x="221" y="41" text-anchor="middle" font-family="var(--mono)" font-size="9.5"
+                  letter-spacing="1.4" fill="var(--accent)">STOCHASTIC</text>
+
+            <!-- deterministic zone -->
+            <rect x="312" y="20" width="510" height="184" rx="5"
+                  fill="none" stroke="var(--rule)" stroke-width="1"/>
+            <text x="567" y="41" text-anchor="middle" font-family="var(--mono)" font-size="9.5"
+                  letter-spacing="1.4" fill="var(--ink-3)">DETERMINISTIC</text>
+
+            <g font-family="var(--sans)" font-size="12.5" fill="var(--ink)">
+              <!-- 0 spec -->
+              <g>
+                <rect x="8" y="86" width="118" height="52" rx="4" fill="var(--paper-3)" stroke="var(--rule)"/>
+                <text x="67" y="107" text-anchor="middle" font-weight="600">OpenAPI spec</text>
+                <text x="67" y="123" text-anchor="middle" font-family="var(--mono)" font-size="9.5" fill="var(--ink-3)">openapi.json</text>
+              </g>
+              <!-- 1 generator -->
+              <g>
+                <rect x="160" y="86" width="122" height="52" rx="4" fill="var(--paper)" stroke="var(--accent)" stroke-width="1.5"/>
+                <text x="221" y="107" text-anchor="middle" font-weight="600">Generator</text>
+                <text x="221" y="123" text-anchor="middle" font-family="var(--mono)" font-size="9.5" fill="var(--accent)">Claude · schema</text>
+              </g>
+              <!-- 2 renderer -->
+              <g>
+                <rect x="330" y="86" width="112" height="52" rx="4" fill="var(--paper)" stroke="var(--rule)"/>
+                <text x="386" y="107" text-anchor="middle" font-weight="600">Renderer</text>
+                <text x="386" y="123" text-anchor="middle" font-family="var(--mono)" font-size="9.5" fill="var(--ink-3)">→ pytest</text>
+              </g>
+              <!-- 3 executor -->
+              <g>
+                <rect x="466" y="86" width="112" height="52" rx="4" fill="var(--paper)" stroke="var(--rule)"/>
+                <text x="522" y="107" text-anchor="middle" font-weight="600">Executor</text>
+                <text x="522" y="123" text-anchor="middle" font-family="var(--mono)" font-size="9.5" fill="var(--ink-3)">runs suite</text>
+              </g>
+              <!-- 4 flake -->
+              <g>
+                <rect x="602" y="86" width="112" height="52" rx="4" fill="var(--paper)" stroke="var(--rule)"/>
+                <text x="658" y="107" text-anchor="middle" font-weight="600">Flake detector</text>
+                <text x="658" y="123" text-anchor="middle" font-family="var(--mono)" font-size="9.5" fill="var(--ink-3)">N runs</text>
+              </g>
+              <!-- 5 diagnostics -->
+              <g>
+                <rect x="738" y="86" width="76" height="52" rx="4" fill="var(--paper)" stroke="var(--rule)"/>
+                <text x="776" y="107" text-anchor="middle" font-weight="600">Diagnosis</text>
+                <text x="776" y="123" text-anchor="middle" font-family="var(--mono)" font-size="9.5" fill="var(--ink-3)">clusters</text>
+              </g>
+            </g>
+
+            <g stroke="var(--ink-3)" stroke-width="1.3" fill="none" color="var(--ink-3)" marker-end="url(#ar)">
+              <path d="M128,112 L156,112"/>
+              <path d="M284,112 L326,112"/>
+              <path d="M444,112 L462,112"/>
+              <path d="M580,112 L598,112"/>
+              <path d="M716,112 L734,112"/>
+            </g>
+
+            <!-- status row -->
+            <g font-family="var(--mono)" font-size="9">
+              <text x="67"  y="170" text-anchor="middle" fill="var(--green)">PHASE 1 ✓</text>
+              <text x="221" y="170" text-anchor="middle" fill="var(--green)">PHASE 2 ✓</text>
+              <text x="386" y="170" text-anchor="middle" fill="var(--ink-3)">PHASE 3</text>
+              <text x="522" y="170" text-anchor="middle" fill="var(--ink-3)">PHASE 3</text>
+              <text x="658" y="170" text-anchor="middle" fill="var(--ink-3)">PHASE 4</text>
+              <text x="776" y="170" text-anchor="middle" fill="var(--ink-3)">PHASE 5</text>
+            </g>
+
+            <!-- traceability return -->
+            <path d="M776,146 L776,186 L221,186 L221,146"
+                  stroke="var(--accent)" stroke-width="1.1" fill="none" stroke-dasharray="3 3"
+                  color="var(--accent)" marker-end="url(#ar)"/>
+            <text x="500" y="202" text-anchor="middle" font-family="var(--mono)" font-size="9.5" fill="var(--accent)">
+              spec_ref carries traceability back to the requirement (Phase 6)
+            </text>
+          </svg>
+        </div>
+        <figcaption>
+          The dashed box is the only place where the same input can produce different output. Its
+          width on this diagram is roughly proportional to how much of the design effort it absorbs.
+        </figcaption>
+      </figure>
+
+      <div class="scroller">
+        <table>
+          <caption>Stage responsibilities and current status.</caption>
+          <thead>
+            <tr><th>Stage</th><th>Input → Output</th><th>Character</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Target API</strong></td>
+              <td>— → <code>openapi.json</code></td>
+              <td>The controlled system under test</td>
+              <td><span class="pill done">Phase 1</span></td>
+            </tr>
+            <tr>
+              <td><strong>Generator</strong></td>
+              <td>spec → <code>TestSuite</code></td>
+              <td>The one stochastic step</td>
+              <td><span class="pill done">Phase 2</span></td>
+            </tr>
+            <tr>
+              <td><strong>Renderer</strong></td>
+              <td><code>TestSuite</code> → pytest files</td>
+              <td>Deterministic templating</td>
+              <td><span class="pill next">Phase 3</span></td>
+            </tr>
+            <tr>
+              <td><strong>Executor</strong></td>
+              <td>pytest → results</td>
+              <td>Runs against the live target</td>
+              <td><span class="pill next">Phase 3</span></td>
+            </tr>
+            <tr>
+              <td><strong>Flake detector</strong></td>
+              <td>N × results → classification</td>
+              <td>Stable / flaky / consistently failing</td>
+              <td><span class="pill todo">Phase 4</span></td>
+            </tr>
+            <tr>
+              <td><strong>Diagnostics</strong></td>
+              <td>failures → root-cause clusters</td>
+              <td>LLM, second appearance</td>
+              <td><span class="pill todo">Phase 5</span></td>
+            </tr>
+            <tr>
+              <td><strong>Traceability matrix</strong></td>
+              <td><code>spec_ref</code> → coverage map</td>
+              <td>Requirement-to-test linkage</td>
+              <td><span class="pill todo">Phase 6</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 3 ============ -->
+    <section id="repo">
+      <span class="sec-num">03 — Structure</span>
+      <h2>Repository architecture: two deployables, one contract</h2>
+
+      <p>
+        The repo holds two genuinely separate programs. Keeping them separate is not tidiness — it
+        is what makes the target <em>controlled</em>, which is the premise the whole project rests on.
+      </p>
+
+      <figure class="bleed">
+        <div class="fig-frame">
+          <svg viewBox="0 0 900 300" role="img" aria-label="Two separate packages: target_api, the system under test, and specforge, the tool. The only thing crossing between them is openapi.json, an observable contract. Each has its own pinned dependencies and its own CI job.">
+            <g font-family="var(--sans)" font-size="12.5" fill="var(--ink)">
+
+              <!-- target_api -->
+              <rect x="24" y="34" width="330" height="228" rx="6" fill="var(--paper-3)" stroke="var(--rule)"/>
+              <text x="46" y="60" font-weight="650" font-size="14">target_api/</text>
+              <text x="46" y="78" font-family="var(--mono)" font-size="9.5" fill="var(--ink-3)">SYSTEM UNDER TEST</text>
+              <g font-family="var(--mono)" font-size="11" fill="var(--ink-2)">
+                <text x="46" y="106">app/ — routers, models, schemas</text>
+                <text x="46" y="128">tests/ — 18 tests, 95% cov</text>
+                <text x="46" y="150">requirements.txt — pinned (==)</text>
+                <text x="46" y="172">pyproject.toml — own lint/pytest</text>
+                <text x="46" y="194">Dockerfile · db/seed.py</text>
+              </g>
+              <rect x="46" y="210" width="286" height="34" rx="4" fill="var(--paper)" stroke="var(--accent)" stroke-width="1.4"/>
+              <text x="189" y="232" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--accent)">openapi.json — the contract</text>
+
+              <!-- specforge -->
+              <rect x="546" y="34" width="330" height="228" rx="6" fill="var(--paper-3)" stroke="var(--rule)"/>
+              <text x="568" y="60" font-weight="650" font-size="14">specforge/</text>
+              <text x="568" y="78" font-family="var(--mono)" font-size="9.5" fill="var(--ink-3)">THE TOOL</text>
+              <g font-family="var(--mono)" font-size="11" fill="var(--ink-2)">
+                <text x="568" y="106">schema.py — the validated boundary</text>
+                <text x="568" y="128">prompts.py — generation prompt</text>
+                <text x="568" y="150">generator.py — the only LLM call</text>
+                <text x="568" y="172">cli.py — entry point</text>
+                <text x="568" y="194">renderer / executor / analysis →</text>
+              </g>
+              <rect x="568" y="210" width="286" height="34" rx="4" fill="var(--paper)" stroke="var(--rule)"/>
+              <text x="711" y="232" text-anchor="middle" font-family="var(--mono)" font-size="11" fill="var(--ink-2)">requirements.txt — floating (&gt;=)</text>
+
+              <!-- arrow -->
+              <path d="M362,227 C440,227 470,150 538,150"
+                    stroke="var(--accent)" stroke-width="1.6" fill="none" marker-end="url(#ar2)"/>
+              <defs>
+                <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                  <path d="M0,1 L9,5 L0,9" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </marker>
+              </defs>
+              <text x="450" y="176" text-anchor="middle" font-family="var(--mono)" font-size="10" fill="var(--accent)">reads</text>
+
+              <text x="450" y="284" text-anchor="middle" font-family="var(--mono)" font-size="10.5" fill="var(--ink-3)">
+                one-directional · no shared source · separate CI jobs
+              </text>
+            </g>
+          </svg>
+        </div>
+        <figcaption>
+          The dependency runs one way, and it runs through an observable contract rather than shared
+          code. The tool never imports the target.
+        </figcaption>
+      </figure>
+
+      <h3>Why the separation earns its keep</h3>
+      <p>
+        If both installed one flat <code>requirements.txt</code>, you'd be asserting they share a
+        runtime. They don't — and pretending otherwise leaks the tool's dependencies (the Anthropic
+        SDK, for one) into the environment that is supposed to be a clean, predictable target. The
+        README's central claim is that a controlled target makes every failure unambiguous; a leaky
+        dependency boundary quietly undermines exactly that.
+      </p>
+      <p>
+        The version-pinning styles differ for the same reason: <code>target_api</code> is an
+        application you run, so it pins exactly (<code>==</code>) for reproducibility;
+        <code>specforge</code> is library-shaped, so it floats (<code>&gt;=</code>) for flexibility.
+      </p>
+    </section>
+
+    <!-- ============ 4 ============ -->
+    <section id="boundary">
+      <span class="sec-num">04 — Core mechanism</span>
+      <h2>The validated boundary, precisely</h2>
+
+      <p>
+        This is the part worth understanding in detail, because it is both the project's best idea
+        and the source of its most instructive bug.
+      </p>
+
+      <h3>What the model actually emits</h3>
+      <p>
+        The generator does not ask for code, or for free text that gets parsed. It asks for a
+        <code>TestSuite</code> — a Pydantic model — using <strong>structured outputs</strong>, where
+        the API constrains the response to a strict JSON schema. Each <code>TestDefinition</code>
+        carries: an id, a description, a <code>case_type</code>, a <code>spec_ref</code>, the HTTP
+        method and path, an <code>auth</code> role, request payloads, and the expected status.
+      </p>
+
+      <h3>Two guarantees that are easy to conflate</h3>
+
+      <figure>
+        <div class="fig-frame">
+          <svg viewBox="0 0 640 200" role="img" aria-label="Structural determinism is guaranteed by the schema. Semantic stability is not guaranteed and must be measured by the flake detector.">
+            <g font-family="var(--sans)" font-size="12.5">
+              <rect x="16" y="24" width="288" height="152" rx="5" fill="var(--green-wash)" stroke="var(--green)" stroke-width="1.2"/>
+              <text x="160" y="52" text-anchor="middle" font-weight="650" fill="var(--green)">Structural determinism</text>
+              <text x="160" y="76" text-anchor="middle" font-size="11.5" fill="var(--ink-2)">Output is always a valid</text>
+              <text x="160" y="94" text-anchor="middle" font-size="11.5" fill="var(--ink-2)">test definition.</text>
+              <text x="160" y="126" text-anchor="middle" font-family="var(--mono)" font-size="10.5" fill="var(--green)">GUARANTEED</text>
+              <text x="160" y="146" text-anchor="middle" font-size="11" fill="var(--ink-3)">by the strict schema</text>
+
+              <rect x="336" y="24" width="288" height="152" rx="5" fill="var(--amber-wash)" stroke="var(--amber)" stroke-width="1.2"/>
+              <text x="480" y="52" text-anchor="middle" font-weight="650" fill="var(--amber)">Semantic stability</text>
+              <text x="480" y="76" text-anchor="middle" font-size="11.5" fill="var(--ink-2)">Same spec produces the</text>
+              <text x="480" y="94" text-anchor="middle" font-size="11.5" fill="var(--ink-2)">same tests, run over run.</text>
+              <text x="480" y="126" text-anchor="middle" font-family="var(--mono)" font-size="10.5" fill="var(--amber)">NOT GUARANTEED</text>
+              <text x="480" y="146" text-anchor="middle" font-size="11" fill="var(--ink-3)">measured in Phase 4</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption>
+          Assuming the right-hand box rather than measuring it is precisely the mistake the project
+          exists to expose.
+        </figcaption>
+      </figure>
+
+      <div class="note warn">
+        <span class="tag">A design pillar that had to be retired</span>
+        <p>
+          The README originally claimed <em>“temperature 0 and schema validation on every generation
+          call.”</em> <strong>The temperature half no longer exists.</strong> Sampling parameters
+          (<code>temperature</code>, <code>top_p</code>, <code>top_k</code>) are removed on current
+          Claude models and return a 400; the old config named a legacy model, which is why it hadn't
+          broken. Even where accepted, <code>temperature=0</code> never actually guaranteed identical
+          output.
+        </p>
+        <p>
+          So the structural guarantee now rests <em>entirely</em> on the schema — and the honest
+          architecture measures stability rather than assuming it. This made the thesis stronger,
+          not weaker.
+        </p>
+      </div>
+
+      <h3>Where the boundary validates, in two stages</h3>
+      <p>
+        Request payloads (<code>body</code>, <code>path_params</code>, <code>query_params</code>)
+        are JSON <em>strings</em> on the wire, not objects. That looks like a downgrade and is
+        actually a forced move — see <a href="#evidence">§06</a>. The consequence is that validation
+        happens twice at the same boundary:
+      </p>
+      <ol>
+        <li>The API guarantees the response matches the schema — the field <em>is</em> a string.</li>
+        <li>A Pydantic validator guarantees the string parses as a JSON object — the string is <em>usable</em>.</li>
+      </ol>
+      <p>
+        Downstream code never parses by hand; it calls <code>body_dict()</code>,
+        <code>path_params_dict()</code>, or <code>resolved_path()</code>, which substitutes path
+        template parameters and returns a concrete URL.
+      </p>
+    </section>
+
+    <!-- ============ 5 ============ -->
+    <section id="decisions">
+      <span class="sec-num">05 — Rationale</span>
+      <h2>Decisions and what each one cost</h2>
+
+      <p>
+        Every choice below has a real trade-off. Being able to name the cost is what separates
+        understanding the design from reciting it.
+      </p>
+
+      <div class="decisions">
+
+        <article class="dec">
+          <h4>Build the target service instead of testing a public API</h4>
+          <p>
+            A controlled target allows deliberately tricky validation, a planted flaky endpoint to
+            prove the detector works, and fully offline runs with no rate limits or third-party
+            noise. Against a public API, every failure is ambiguous.
+          </p>
+          <p class="cost"><b>Cost:</b> an entire phase of work before the actual tool began, and results that don't automatically generalize to messier real-world APIs.</p>
+        </article>
+
+        <article class="dec">
+          <h4>The LLM emits structured data, never code</h4>
+          <p>
+            Generation returns validated JSON; rendering to pytest is deterministic templating. The
+            non-deterministic component is confined to one auditable boundary instead of producing
+            arbitrary executable output.
+          </p>
+          <p class="cost"><b>Cost:</b> the renderer can only express test shapes the schema anticipated. Novel cases need a schema change, not just a better prompt.</p>
+        </article>
+
+        <article class="dec">
+          <h4>Tests run on SQLite; production runs on Postgres</h4>
+          <p>
+            The same application code serves both because the database is injected via a
+            <code>DATABASE_URL</code> config seam. Tests get a disposable file deleted on setup —
+            hermetic, instant, no external service.
+          </p>
+          <p class="cost"><b>Cost:</b> SQLite and Postgres are not behaviorally identical, so the suite can miss Postgres-specific bugs.</p>
+        </article>
+
+        <article class="dec">
+          <h4>Mock the Claude call in CI</h4>
+          <p>
+            The tool's 10 tests verify validation and error handling with an injected fake client.
+            CI needs no API key, costs nothing, and can't fail because of a network blip.
+          </p>
+          <p class="cost"><b>Cost:</b> CI proves the plumbing works, never that the prompt is any good. Generation quality needs separate, deliberate evaluation.</p>
+        </article>
+
+        <article class="dec">
+          <h4>Keep the smoke script <em>and</em> the pytest suite</h4>
+          <p>
+            <code>smoke_test.py</code> is a top-to-bottom narrative you run by hand to see the
+            service breathe. The pytest suite is a machine-enforced gate with per-test granularity.
+            Same behavior, two audiences.
+          </p>
+          <p class="cost"><b>Cost:</b> two artifacts covering similar ground can drift apart if only one is maintained.</p>
+        </article>
+
+        <article class="dec">
+          <h4>Make <code>spec_ref</code> a required field</h4>
+          <p>
+            Every test must name the spec element that motivated it. Phase 6's traceability matrix
+            is therefore designed in from the first line rather than retrofitted — the requirement
+            that comes straight from regulated-software design controls.
+          </p>
+          <p class="cost"><b>Cost:</b> the model must justify every test, which may suppress a useful test it can't cleanly attribute.</p>
+        </article>
+
+        <article class="dec">
+          <h4><code>extra="forbid"</code> on the schema</h4>
+          <p>
+            Unknown fields are rejected outright, so a model that starts emitting a new key fails
+            loudly instead of having it silently dropped.
+          </p>
+          <p class="cost"><b>Cost:</b> brittleness by design — a harmless additional field breaks the run rather than being ignored.</p>
+        </article>
+
+        <article class="dec">
+          <h4>Declare <code>pythonpath</code> rather than package the app</h4>
+          <p>
+            The import failure could have been fixed by making <code>target_api</code> a proper
+            installable distribution. One config line states the only fact that is true today, with
+            zero structural commitment.
+          </p>
+          <p class="cost"><b>Cost:</b> deferred work. The moment anything needs to import the target as a library, the packaging cost arrives.</p>
+        </article>
+
+        <article class="dec">
+          <h4>Delete dead code instead of finding it a use</h4>
+          <p>
+            An unused <code>require_admin</code> dependency was removed rather than given a route.
+            The endpoint surface is the generator's <em>input</em> — every route added is more
+            surface the tool must model, test, and diagnose.
+          </p>
+          <p class="cost"><b>Cost:</b> one authorization dimension (role-gated regardless of ownership) is now untested, because the service genuinely doesn't have it.</p>
+        </article>
+
+        <article class="dec">
+          <h4>Document response codes in the service itself</h4>
+          <p>
+            FastAPI only infers 2xx and 422. Explicit <code>responses={...}</code> declarations make
+            401/403/404/409 visible in <code>openapi.json</code>, so the generator can see the
+            permission model at all.
+          </p>
+          <p class="cost"><b>Cost:</b> the contract is now maintained by hand alongside the code, and can drift from actual behavior.</p>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- ============ 6 ============ -->
+    <section id="evidence">
+      <span class="sec-num">06 — Evidence</span>
+      <h2>What happened when it actually ran</h2>
+
+      <p>
+        The first live generation run is the most instructive thing in the project, and the best
+        material for explaining it. It produced <strong>47 structurally perfect tests, none of which
+        could execute.</strong>
+      </p>
+
+      <div class="ba">
+        <div class="ba-col before">
+          <h4>Run 1 — before fixes</h4>
+          <dl>
+            <dt>Tests generated</dt><dd>47</dd>
+            <dt>Request bodies populated</dt><dd>0</dd>
+            <dt>Path params populated</dt><dd>0</dd>
+            <dt>403 tests</dt><dd>0</dd>
+            <dt>409 tests</dt><dd>0</dd>
+            <dt>Admin coverage</dt><dd>0</dd>
+            <dt>Range boundary tests</dt><dd>0</dd>
+          </dl>
+        </div>
+        <div class="ba-col after">
+          <h4>Run 2 — after fixes</h4>
+          <dl>
+            <dt>Tests generated</dt><dd>50</dd>
+            <dt>Request bodies populated</dt><dd>29</dd>
+            <dt>Path params populated</dt><dd>15</dd>
+            <dt>403 tests</dt><dd>3</dd>
+            <dt>409 tests</dt><dd>1</dd>
+            <dt>Admin coverage</dt><dd>1</dd>
+            <dt>Range boundary tests</dt><dd>8</dd>
+          </dl>
+        </div>
+      </div>
+
+      <h3>Defect 1 — the schema was under-specified</h3>
+      <p>
+        Every payload field was declared as a free-form <code>dict</code>. That renders as an object
+        schema with <em>no properties</em>; structured outputs cannot populate it, so the model was
+        constrained to emit <code>{}</code> every single time — and complied exactly. A test labelled
+        “valid create → 201” carried an empty body.
+      </p>
+
+      <div class="note key">
+        <span class="tag">The lesson worth carrying</span>
+        <p>
+          <strong>A strict schema guarantees shape, not usefulness.</strong> “Structurally valid and
+          semantically empty” passes every validation gate cleanly. Validation is necessary and
+          nowhere near sufficient — which is the sharper, empirically-backed version of the project's
+          own thesis.
+        </p>
+      </div>
+
+      <h3>Defect 2 — the spec was lying by omission</h3>
+      <p>
+        The generator can only be as good as its input, and <code>openapi.json</code> turned out to
+        be a <em>lossy projection</em> of real behavior. Two consequences:
+      </p>
+      <ul>
+        <li>
+          Only 2xx and 422 were documented, so the permission model was invisible. The model guessed
+          <strong>404</strong> for cross-user access — a reasonable REST convention — where the
+          service actually returns <strong>403</strong>. Those tests would have failed against
+          correct behavior. Admin got zero coverage because roles never appeared in the spec.
+        </li>
+        <li>
+          The headline unit-dependent range serialized as a bare <code>"type": "number"</code>. The
+          Pydantic <code>model_validator</code> enforcing it does not reach OpenAPI, so the target's
+          signature validation rule attracted <em>no boundary tests at all</em>.
+        </li>
+      </ul>
+
+      <h3>The payoff, once the spec described the rule</h3>
+
+      <figure class="bleed">
+        <div class="fig-frame">
+          <svg viewBox="0 0 900 208" role="img" aria-label="Boundary probes on both units. For mg/dL: 19.99 rejected with 422, 20 accepted with 201, 600 accepted with 201, 600.01 rejected with 422. For mmol per litre: 1.09 rejected, 1.1 accepted, 33.3 accepted, 33.31 rejected.">
+            <g font-family="var(--mono)" font-size="11">
+
+              <!-- mg/dL -->
+              <text x="20" y="44" font-family="var(--sans)" font-size="12.5" font-weight="650" fill="var(--ink)">mg/dL</text>
+              <text x="20" y="60" font-size="10" fill="var(--ink-3)">accepts 20–600</text>
+              <line x1="150" y1="52" x2="860" y2="52" stroke="var(--rule)" stroke-width="2"/>
+              <line x1="238" y1="52" x2="772" y2="52" stroke="var(--green)" stroke-width="5" stroke-linecap="round"/>
+              <g fill="var(--crimson)">
+                <circle cx="196" cy="52" r="5"/><text x="196" y="34" text-anchor="middle">19.99</text><text x="196" y="76" text-anchor="middle" font-size="10">422</text>
+                <circle cx="814" cy="52" r="5"/><text x="814" y="34" text-anchor="middle">600.01</text><text x="814" y="76" text-anchor="middle" font-size="10">422</text>
+              </g>
+              <g fill="var(--green)">
+                <circle cx="238" cy="52" r="5"/><text x="238" y="34" text-anchor="middle">20</text><text x="238" y="76" text-anchor="middle" font-size="10">201</text>
+                <circle cx="772" cy="52" r="5"/><text x="772" y="34" text-anchor="middle">600</text><text x="772" y="76" text-anchor="middle" font-size="10">201</text>
+              </g>
+
+              <!-- mmol/L -->
+              <text x="20" y="146" font-family="var(--sans)" font-size="12.5" font-weight="650" fill="var(--ink)">mmol/L</text>
+              <text x="20" y="162" font-size="10" fill="var(--ink-3)">accepts 1.1–33.3</text>
+              <line x1="150" y1="154" x2="860" y2="154" stroke="var(--rule)" stroke-width="2"/>
+              <line x1="238" y1="154" x2="772" y2="154" stroke="var(--green)" stroke-width="5" stroke-linecap="round"/>
+              <g fill="var(--crimson)">
+                <circle cx="196" cy="154" r="5"/><text x="196" y="136" text-anchor="middle">1.09</text><text x="196" y="178" text-anchor="middle" font-size="10">422</text>
+                <circle cx="814" cy="154" r="5"/><text x="814" y="136" text-anchor="middle">33.31</text><text x="814" y="178" text-anchor="middle" font-size="10">422</text>
+              </g>
+              <g fill="var(--green)">
+                <circle cx="238" cy="154" r="5"/><text x="238" y="136" text-anchor="middle">1.1</text><text x="238" y="178" text-anchor="middle" font-size="10">201</text>
+                <circle cx="772" cy="154" r="5"/><text x="772" y="136" text-anchor="middle">33.3</text><text x="772" y="178" text-anchor="middle" font-size="10">201</text>
+              </g>
+            </g>
+          </svg>
+        </div>
+        <figcaption>
+          Last-rejected and first-accepted on each side of both units — textbook boundary testing,
+          and exactly the cross-field case hand-written suites are weakest at. Generated only once
+          the spec actually described the rule.
+        </figcaption>
+      </figure>
+
+      <p>
+        Both defects were the same bug wearing different clothes: <strong>an under-specified contract
+        silently produces confident, useless output.</strong> Once from the Pydantic schema, once
+        from the OpenAPI spec. Neither failed loudly; both passed every gate in place at the time.
+      </p>
+    </section>
+
+    <!-- ============ 7 ============ -->
+    <section id="interactions">
+      <span class="sec-num">07 — Behavior</span>
+      <h2>How the pieces interact</h2>
+
+      <h3>Identity is expressed as a role, not a credential</h3>
+      <p>
+        A test says <code>auth: "other_user"</code>, never a token. The four roles —
+        <code>none</code>, <code>user</code>, <code>other_user</code>, <code>admin</code> — let the
+        generator reason about <em>authorization semantics</em> while the executor owns credential
+        mechanics. This is why the model can express “a different user must not read this” without
+        knowing anything about JWTs, and why the executor can change its auth strategy without
+        regenerating a single test.
+      </p>
+
+      <h3>Paths stay templated until execution</h3>
+      <p>
+        A test carries <code>path: "/readings/{reading_id}"</code> plus
+        <code>path_params: '{"reading_id": "1"}'</code>. Keeping them separate preserves the link to
+        the spec — <code>spec_ref</code> refers to the templated path — while
+        <code>resolved_path()</code> produces the concrete URL at execution time. Collapsing them
+        early would destroy the traceability the project is built to demonstrate.
+      </p>
+
+      <h3>Configuration is the seam that decouples code from environment</h3>
+      <p>
+        <code>DATABASE_URL</code> is read once in <code>config.py</code> and consumed in
+        <code>database.py</code>; nothing else in the app knows which database it is talking to. The
+        test <code>conftest.py</code> sets that variable <em>before the app imports</em>, which is
+        the entire mechanism behind hermetic tests. Same pattern, one layer up:
+        <code>CLAUDE_MODEL</code> is read from the environment, so the generator's model is a
+        deployment decision rather than a code change.
+      </p>
+
+      <h3>The failure modes the generator handles explicitly</h3>
+      <p>
+        Because structured outputs removes malformed JSON from the space of possible failures, only
+        two remain, and both are checked before the suite is read: the model
+        <strong>declining</strong> the request (<code>stop_reason == "refusal"</code>), and the
+        response <strong>hitting the token ceiling</strong> mid-suite
+        (<code>stop_reason == "max_tokens"</code>). Both raise a typed
+        <code>GenerationError</code> that the CLI turns into a clean message.
+      </p>
+    </section>
+
+    <!-- ============ 8 ============ -->
+    <section id="testing">
+      <span class="sec-num">08 — Verification</span>
+      <h2>Testing and CI</h2>
+
+      <p>
+        Two independent jobs, each across Python 3.11 and 3.12 — four runs total. The two halves of
+        the repo are verified separately because they are separate programs.
+      </p>
+
+      <div class="scroller">
+        <table>
+          <caption>CI topology. Neither job requires an API key.</caption>
+          <thead>
+            <tr><th>Job</th><th>Working dir</th><th>Installs</th><th>Runs</th><th>Result</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Target API</strong></td>
+              <td class="num">target_api/</td>
+              <td class="num">target_api/requirements.txt</td>
+              <td>ruff + 18 tests, coverage on <code>app</code></td>
+              <td class="num">95% cov</td>
+            </tr>
+            <tr>
+              <td><strong>SpecForge tool</strong></td>
+              <td class="num">. (root)</td>
+              <td class="num">requirements.txt</td>
+              <td>ruff + 10 tests, coverage on <code>specforge</code></td>
+              <td class="num">10 passed</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        <span class="tag">A trap worth knowing</span>
+        <p>
+          CI invokes <strong>bare <code>pytest</code></strong>, which — unlike
+          <code>python -m pytest</code> — does <em>not</em> put the working directory on
+          <code>sys.path</code>. A suite that passes locally under <code>-m</code> can fail in CI
+          with <code>ModuleNotFoundError</code>. Both <code>pyproject.toml</code> files set
+          <code>pythonpath = ["."]</code> to close the gap. When verifying locally, run it the way CI
+          does.
+        </p>
+      </div>
+
+      <p>
+        The <code>testpaths</code> setting in each config keeps the two suites from colliding, and
+        deliberately excludes <code>smoke_test.py</code> — a manual narrative script, not a pytest
+        module.
+      </p>
+    </section>
+
+    <!-- ============ 9 ============ -->
+    <section id="debt">
+      <span class="sec-num">09 — Honesty</span>
+      <h2>Known debt</h2>
+
+      <p>Carried deliberately at this size, and worth naming before someone else names it.</p>
+
+      <div class="scroller">
+        <table>
+          <caption>Current shortcuts and when each becomes worth paying down.</caption>
+          <thead>
+            <tr><th>Item</th><th>Why it exists</th><th>When to fix</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Order-dependent target tests</strong></td>
+              <td>Module-scoped fixtures share one SQLite file; one test asserts an empty list that only holds because of execution order.</td>
+              <td>Before the suite grows much larger — move to function-scoped isolation.</td>
+            </tr>
+            <tr>
+              <td><strong>Admin fixture writes to the DB</strong></td>
+              <td>There is no API to mint an admin, so the test promotes a user directly — coupling a test to the persistence layer.</td>
+              <td>Acceptable; revisit if the <code>User</code> model changes.</td>
+            </tr>
+            <tr>
+              <td><strong>Generation quality is unmeasured</strong></td>
+              <td>CI proves the plumbing, never the prompt. There is no eval telling you whether run N is better than run N−1.</td>
+              <td>Phase 4 — the flake detector is the first real measurement.</td>
+            </tr>
+            <tr>
+              <td><strong>The spec is hand-maintained</strong></td>
+              <td>Response codes are now declared by hand and can drift from what the routes actually do.</td>
+              <td>A test asserting spec-vs-behavior agreement would close it.</td>
+            </tr>
+            <tr>
+              <td><strong>SQLite ≠ Postgres</strong></td>
+              <td>Hermetic tests were worth more than backend fidelity.</td>
+              <td>If the target grows Postgres-specific features.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <hr class="div">
+
+    <!-- ============ 10 ============ -->
+    <section id="explain">
+      <span class="sec-num">10 — Delivery</span>
+      <h2>Explaining it out loud</h2>
+
+      <p>
+        Answers to the questions this project invites. The specifics are what make it credible —
+        lead with them.
+      </p>
+
+      <div class="qa">
+        <p class="q">“What does it do?”</p>
+        <p>
+          It takes an OpenAPI spec and produces a runnable pytest suite covering positive, negative,
+          boundary, and authorization cases — then runs that suite repeatedly in CI, identifies which
+          tests are non-deterministic, and clusters failures into likely root causes. The generation
+          is the least interesting part; everything downstream of it is the point.
+        </p>
+      </div>
+
+      <div class="qa">
+        <p class="q">“Why not just let the model write the tests?”</p>
+        <p>
+          Because then you can't tell why a test failed. If the model writes arbitrary code, a
+          failure could be a real bug, a bad test, or a hallucinated API call — and you have no way
+          to separate them. Constraining the model to emit structured data against a strict schema
+          means the only thing it can get wrong is <em>test design</em>, which is the thing you
+          actually want it deciding.
+        </p>
+      </div>
+
+      <div class="qa">
+        <p class="q">“How do you handle non-determinism?”</p>
+        <p>
+          I separate two things people usually conflate. Structural determinism — that the output is
+          always a valid test definition — is guaranteed by the schema. Semantic stability — that the
+          same spec yields the same tests — is <em>not</em> guaranteed, and I don't pretend it is; it
+          gets measured across N runs. I originally claimed temperature 0 gave me determinism; that
+          turned out to be wrong twice over, because sampling parameters are removed on current
+          models and never guaranteed identical output anyway.
+        </p>
+      </div>
+
+      <div class="qa">
+        <p class="q">“What's the most interesting thing you found?”</p>
+        <p>
+          The first live run generated 47 structurally perfect tests, every one of which was
+          unexecutable — all the request bodies were empty. The cause was my own schema: a free-form
+          <code>dict</code> renders as an object with no properties, which structured outputs cannot
+          populate, so the model correctly emitted <code>{}</code> 47 times. It taught me that a
+          strict schema guarantees shape, not usefulness — “structurally valid and semantically
+          empty” passes every gate you have.
+        </p>
+      </div>
+
+      <div class="qa">
+        <p class="q">“What did that lead you to change?”</p>
+        <p>
+          Two things. Payloads became JSON strings validated in a second stage, so the boundary still
+          validates but in two steps. And I discovered the same bug in the other direction: my
+          OpenAPI spec was a lossy projection of real behavior — it documented only 2xx and 422, so
+          the generator guessed 404 where the service returns 403, and never tested the
+          unit-dependent range because that rule didn't survive serialization. I made the service
+          describe itself honestly, and the very next run probed all four range boundaries correctly.
+        </p>
+      </div>
+
+      <div class="qa">
+        <p class="q">“Where does the regulated-software background show up?”</p>
+        <p>
+          <code>spec_ref</code> is a required field on every test. In FDA-regulated device software,
+          design controls demand demonstrable requirement-to-test linkage — “we have tests” doesn't
+          satisfy an auditor. So traceability is a schema-level guarantee from the first commit, not
+          a report generated at the end. If a test can't name the spec element that motivated it, it
+          doesn't validate.
+        </p>
+      </div>
+
+      <div class="qa">
+        <p class="q">“What would you do differently?”</p>
+        <p>
+          I'd write the schema against the actual constraints of structured outputs before writing
+          the prompt — the empty-payload bug was a day of debugging that a five-minute read would
+          have prevented. And I'd have made the target service describe itself accurately from the
+          start; I built deliberately tricky validation and then shipped a spec that didn't mention
+          it, which meant the tool couldn't see the one thing it was built to find.
+        </p>
+      </div>
+    </section>
+
+  </main>
+</div>

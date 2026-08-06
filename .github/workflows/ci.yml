@@ -83,4 +83,54 @@ jobs:
       - name: Run tests
         run: pytest --cov=specforge --cov-report=term-missing -v
 
-  # Phase 4 will add a job here that runs the generated suite N times
+  # Executes the committed generated suite against a live target. No API key
+  # and no generation happen here — the suite in generated/ is an artifact, so
+  # this job is deterministic and free. Phase 4 extends it to N repeated runs
+  # and compares them to classify each test as stable, flaky, or failing.
+  execute:
+    name: Execute generated suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r target_api/requirements.txt
+          pip install pytest
+
+      - name: Seed a clean database
+        run: python scripts/run_target.py --reset-only
+
+      - name: Start the target service
+        run: |
+          cd target_api
+          DATABASE_URL="sqlite:///$PWD/specforge_run.db" \
+            python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          cd ..
+          python scripts/run_target.py --wait http://127.0.0.1:8000
+
+      # Re-rendering must be a no-op: generated/ is committed, so a diff here
+      # means someone edited it by hand or changed the renderer without
+      # re-rendering.
+      - name: Verify the committed suite is up to date
+        run: |
+          python -m specforge.cli render suite.json -o generated/
+          git diff --exit-code generated/
+
+      # Not gating yet, deliberately. A failure here can mean the model wrote a
+      # bad test, so gating the repository on it would gate on generation
+      # quality — the thing Phase 4 exists to measure and Phase 5 to diagnose.
+      # Until those land, this job reports rather than blocks. One test is known
+      # to fail: create_reading_note_above_max asks for a 281-character note and
+      # supplies 271, an off-by-ten the model made while writing the literal.
+      - name: Run the generated suite
+        continue-on-error: true
+        run: python -m specforge.cli run generated/ --base-url http://127.0.0.1:8000
